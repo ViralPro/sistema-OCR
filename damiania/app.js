@@ -885,7 +885,7 @@ async function saveToDB(data) {
         console.warn('Backend PHP no disponible, guardando localmente (GitHub Pages):', e);
     }
 
-    const localFacturas = JSON.parse(localStorage.getItem('verdevoto_facturas') || '[]');
+    const localFacturas = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
     const nextId = localFacturas.length > 0 ? Math.max(...localFacturas.map(f => parseInt(f.id) || 0)) + 1 : 1;
     const nuevaFactura = {
         id: nextId,
@@ -909,7 +909,7 @@ async function saveToDB(data) {
     };
 
     localFacturas.unshift(nuevaFactura);
-    localStorage.setItem('verdevoto_facturas', JSON.stringify(localFacturas));
+    localStorage.setItem('facturas_ocr', JSON.stringify(localFacturas));
 
     return {
         success: true,

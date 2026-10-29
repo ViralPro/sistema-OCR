@@ -155,7 +155,7 @@ async function loadInvoices() {
     }
 
     // Modo local / GitHub Pages
-    const local = JSON.parse(localStorage.getItem('verdevoto_facturas') || '[]');
+    const local = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
     state.invoices = local;
     state.filteredInvoices = [...local];
     state.totalPages = Math.ceil(local.length / CONFIG.itemsPerPage) || 1;

@@ -1,4 +1,4 @@
-# 📄 VerdeVoto OCR - Extracción Inteligente de Facturas
+# 📄 OCR de Facturas - Extracción Inteligente
 
 Sistema web automatizado para la digitalización y extracción de datos de facturas y recibos utilizando **Tesseract OCR** y modelos **Google Gemini Flash**.
 
