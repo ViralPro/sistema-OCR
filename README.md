@@ -2,7 +2,7 @@
 
 Sistema web automatizado para la digitalización y extracción de datos de facturas y recibos utilizando **Tesseract OCR** y modelos **Google Gemini Flash**.
 
-🌐 **Sitio Web en Vivo (GitHub Pages):** [https://viralpro.github.io/damiania/](https://viralpro.github.io/damiania/)
+🌐 **Sitio Web en Vivo (GitHub Pages):** [https://viralpro.github.io/sistema-OCR/)
 
 ---
 
@@ -27,4 +27,4 @@ Sistema web automatizado para la digitalización y extracción de datos de factu
 
 ## 📦 Repositorio
 
-[https://github.com/ViralPro/damiania](https://github.com/ViralPro/damiania)
+[https://viralpro.github.io/sistema-OCR/)
