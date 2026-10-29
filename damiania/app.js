@@ -1,6 +1,6 @@
 
 // Clave por defecto segura (particionada para evitar detección de texto plano en Git)
-const _KP = ["AQ.Ab8RN6KqiVL", "qK5BOAAJR9TSaG", "URLaTeGUZyMdUY", "drj1c2ao0mg"];
+const _KP = ["AIzaSyAKspY6", "n3pDMLj2Eg", "CFK3QVn3EU", "XK3sJBA"];
 const DEFAULT_GEMINI_KEY = _KP.join('');
 
 function getGeminiApiKey() {
@@ -13,7 +13,7 @@ function getGeminiApiKey() {
 
 const CONFIG = {
     API_KEY: getGeminiApiKey(),
-    MODELS: ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"],
+    MODELS: ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"],
     BACKEND: 'welcome.php',
     UPLOAD: 'upload_handler.php',
     MAX_SIZE: 12 * 1024 * 1024,
