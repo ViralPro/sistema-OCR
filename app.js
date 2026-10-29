@@ -1,6 +1,6 @@
 
 // Clave por defecto segura (particionada para evitar detección de texto plano en Git)
-const _KP = ["AIzaSyAKspY6", "n3pDMLj2Eg", "CFK3QVn3EU", "XK3sJBA"];
+const _KP = ["const _KP = ["AIzaSyDogghpG1IAtAJ5Oq2OTwg4uE9ns09DzQg"];
 const DEFAULT_GEMINI_KEY = _KP.join('');
 
 function getGeminiApiKey() {
