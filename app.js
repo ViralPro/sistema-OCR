@@ -13,7 +13,7 @@ function getGeminiApiKey() {
 
 const CONFIG = {
     API_KEY: getGeminiApiKey(),
-    MODELS: ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"],
+    MODELS: ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"],
     BACKEND: 'welcome.php',
     UPLOAD: 'upload_handler.php',
     MAX_SIZE: 12 * 1024 * 1024,
