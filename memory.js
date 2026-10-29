@@ -1,3 +1,8 @@
+
+// Detección automática de entorno estático (file:// o GitHub Pages) para evitar errores de CORS con PHP
+const isFileProtocol = window.location.protocol === 'file:';
+const isGitHubPages = window.location.hostname.endsWith('github.io');
+const isStaticEnvironment = isFileProtocol || isGitHubPages;
 const CONFIG = {
     itemsPerPage: 10,
     apiEndpoint2: 'sistema-OCR/welcome.php',
@@ -125,36 +130,41 @@ async function loadInvoices() {
     state.isLoading = true;
     showLoading(true);
 
-    try {
-        const url = new URL(CONFIG.apiEndpoint, window.location.href);
-        url.searchParams.append('action', 'get_facturas');
-        url.searchParams.append('page', state.currentPage);
-        url.searchParams.append('perPage', CONFIG.itemsPerPage);
-        if (state.currentSearch) url.searchParams.append('search', state.currentSearch);
-        url.searchParams.append('_', Date.now());
+    if (!isStaticEnvironment) {
+        try {
+            const url = new URL(CONFIG.apiEndpoint, window.location.href);
+            url.searchParams.append('action', 'get_facturas');
+            url.searchParams.append('page', state.currentPage);
+            url.searchParams.append('perPage', CONFIG.itemsPerPage);
+            if (state.currentSearch) url.searchParams.append('search', state.currentSearch);
+            url.searchParams.append('_', Date.now());
 
-        const response = await fetch(url, {
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
+            const response = await fetch(url, {
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-                state.invoices = data.data || [];
-                state.filteredInvoices = [...state.invoices];
-                state.totalPages = data.pagination?.totalPages || 1;
-                filterAndRender();
-                return;
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.success) {
+                    state.invoices = data.data || [];
+                    state.filteredInvoices = [...state.invoices];
+                    state.totalPages = data.pagination?.totalPages || 1;
+                    filterAndRender();
+                    return;
+                }
             }
+        } catch (error) {
+            console.warn('Cargando facturas de almacenamiento local:', error);
+        } finally {
+            state.isLoading = false;
+            showLoading(false);
         }
-    } catch (error) {
-        console.warn('Cargando facturas de almacenamiento local (GitHub Pages):', error);
-    } finally {
-        state.isLoading = false;
-        showLoading(false);
     }
 
-    // Modo local / GitHub Pages
+    state.isLoading = false;
+    showLoading(false);
+
+    // Modo local / GitHub Pages / file://
     const local = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
     state.invoices = local;
     state.filteredInvoices = [...local];

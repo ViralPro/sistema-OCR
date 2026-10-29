@@ -1,6 +1,11 @@
 
+// Detección automática de entorno estático (file:// o GitHub Pages) para evitar errores de CORS con PHP
+const isFileProtocol = window.location.protocol === 'file:';
+const isGitHubPages = window.location.hostname.endsWith('github.io');
+const isStaticEnvironment = isFileProtocol || isGitHubPages;
+
 // Clave por defecto segura (particionada para evitar detección de texto plano en Git)
-const _KP = ["AIzaSyDogghpG1", "IAtAJ5Oq2OTwg", "4uE9ns09DzQg"];
+const _KP = ["AIzaSyAKspY6n3pDMLj2EgCFK3QVn3EUXK3sJBA"];
 const DEFAULT_GEMINI_KEY = _KP.join('');
 
 function getGeminiApiKey() {
@@ -858,6 +863,9 @@ async function extractTextFromPDF(pdf) {
 // ==================== GUARDADO ====================
 
 async function uploadFile() {
+    if (isStaticEnvironment) {
+        return URL.createObjectURL(state.file);
+    }
     try {
         const form = new FormData();
         form.append('file', state.file);
@@ -869,7 +877,7 @@ async function uploadFile() {
             }
         }
     } catch (e) {
-        console.warn('Backend upload no disponible (modo estático/GitHub Pages):', e);
+        console.warn('Backend upload no disponible:', e);
     }
     return URL.createObjectURL(state.file);
 }
@@ -894,32 +902,35 @@ async function saveToDB(data) {
 
     const montoTotal = data.monto || items.reduce((sum, item) => sum + item.subtotal, 0);
 
-    const form = new FormData();
-    form.append('action', 'insert_factura');
-    form.append('numero_factura', data.numero_factura || `FAC-${Date.now()}`);
-    form.append('fecha_emision', data.fecha_emision || new Date().toISOString().split('T')[0]);
-    form.append('proveedor', data.proveedor || '');
-    form.append('monto', montoTotal);
-    form.append('items', JSON.stringify(items));
-    form.append('extra', JSON.stringify({
-        ...data,
-        extraction_timestamp: new Date().toISOString(),
-        extraction_method: 'ocr_enhanced'
-    }));
-    form.append('imagen_ruta', state.imagePath);
+    if (!isStaticEnvironment) {
+        try {
+            const form = new FormData();
+            form.append('action', 'insert_factura');
+            form.append('numero_factura', data.numero_factura || `FAC-${Date.now()}`);
+            form.append('fecha_emision', data.fecha_emision || new Date().toISOString().split('T')[0]);
+            form.append('proveedor', data.proveedor || '');
+            form.append('monto', montoTotal);
+            form.append('items', JSON.stringify(items));
+            form.append('extra', JSON.stringify({
+                ...data,
+                extraction_timestamp: new Date().toISOString(),
+                extraction_method: 'gemini_multimodal'
+            }));
+            form.append('imagen_ruta', state.imagePath);
 
-    try {
-        const res = await fetch(CONFIG.BACKEND, { method: 'POST', body: form });
-        if (res.ok) {
-            const resData = await res.json().catch(() => null);
-            if (resData && resData.success) {
-                return resData;
+            const res = await fetch(CONFIG.BACKEND, { method: 'POST', body: form });
+            if (res.ok) {
+                const resData = await res.json().catch(() => null);
+                if (resData && resData.success) {
+                    return resData;
+                }
             }
+        } catch (e) {
+            console.warn('Backend PHP no disponible, guardando localmente:', e);
         }
-    } catch (e) {
-        console.warn('Backend PHP no disponible, guardando localmente (GitHub Pages):', e);
     }
 
+    // Almacenamiento local seguro
     const localFacturas = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
     const nextId = localFacturas.length > 0 ? Math.max(...localFacturas.map(f => parseInt(f.id) || 0)) + 1 : 1;
     const nuevaFactura = {
@@ -992,11 +1003,15 @@ function notify(msg, type = 'info') {
 }
 
 async function checkBackend() {
+    if (isStaticEnvironment) {
+        console.log('🌐 Modo estático detectado (' + (isFileProtocol ? 'file://' : 'GitHub Pages') + '). Almacenamiento local activo.');
+        return;
+    }
     try {
         const res = await fetch(`${CONFIG.BACKEND}?action=test`);
         const data = await res.json();
-        if (data.success) console.log('Backend OK');
+        if (data && data.success) console.log('Backend OK');
     } catch (e) {
-        notify('Error de conexión', 'error');
+        console.warn('Backend PHP no disponible:', e);
     }
 }
