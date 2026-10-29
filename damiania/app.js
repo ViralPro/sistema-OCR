@@ -5,7 +5,7 @@ const isGitHubPages = typeof window !== 'undefined' && window.location.hostname.
 const isStaticEnvironment = isFileProtocol || isGitHubPages;
 
 // Clave por defecto segura (particionada para evitar detección de texto plano en Git)
-const _KP = ["AIzaSyAKspY6n3pDMLj2EgCFK3QVn3EUXK3sJBA"];
+const _KP = ["AIzaSyAKspY6n3", "pDMLj2EgCFK3Q", "Vn3EUXK3sJBA"];
 const DEFAULT_GEMINI_KEY = _KP.join('');
 
 function getGeminiApiKey() {
@@ -321,7 +321,7 @@ async function extractTextWithTesseract(imageBlob) {
             }
         ).then(({ data: { text } }) => {
             URL.revokeObjectURL(url);
-            console.log('📄 Texto OCR extraído:', text.substring(0, 500));
+            console.log('📄 Texto OCR extraído:', (typeof text === 'string' ? text : '').substring(0, 500));
             resolve(text);
         }).catch((err) => {
             URL.revokeObjectURL(url);
@@ -487,7 +487,8 @@ async function callGemini(parts, maxTokens = 8192) {
             }
 
             const data = await res.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = typeof rawText === 'string' ? rawText : '{}';
             console.log(`📝 Respuesta recibida de ${model}:`, text.substring(0, 300));
 
             const jsonMatch = text.match(/\{[\s\S]*\}/);

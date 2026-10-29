@@ -13,6 +13,15 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <!-- Tailwind CSS -->
+    <script>
+        (function() {
+            const origWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('should not be used in production')) return;
+                origWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -433,7 +442,7 @@
     <div id="notification-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
 
     <!-- Script de lógica -->
-    <script src="memory.js"></script>
+    <script src="memory.js?v=20261029_2"></script>
 </body>
 
 </html>

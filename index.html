@@ -13,6 +13,15 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <!-- Tailwind CSS -->
+    <script>
+        (function() {
+            const origWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('should not be used in production')) return;
+                origWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -385,7 +394,7 @@
     <!-- Scripts de Librerías y Lógica -->
     <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20261029_2"></script>
 </body>
 
 </html>
