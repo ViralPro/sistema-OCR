@@ -1,7 +1,7 @@
 
 // Detección automática de entorno estático (file:// o GitHub Pages) para evitar errores de CORS con PHP
-const isFileProtocol = window.location.protocol === 'file:';
-const isGitHubPages = window.location.hostname.endsWith('github.io');
+const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+const isGitHubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
 const isStaticEnvironment = isFileProtocol || isGitHubPages;
 
 // Clave por defecto segura (particionada para evitar detección de texto plano en Git)
@@ -589,85 +589,74 @@ Responde en formato JSON:
     }
 }
 
-function buildFullInvoicePrompt(ocrText, detectedCodes, productTable) {
-    return `Eres un experto en extracción de datos de facturas. Analizá la imagen y el texto OCR para extraer TODOS los productos.
+function buildFullInvoicePrompt(ocrText = '', detectedCodes = [], productTable = '') {
+    const safeOcr = typeof ocrText === 'string' ? ocrText : '';
+    const safeCodes = Array.isArray(detectedCodes) ? detectedCodes : [];
+    const safeTable = typeof productTable === 'string' ? productTable : '';
 
-**TEXTO OCR COMPLETO (puede estar fragmentado):**
-${ocrText.substring(0, 1500)}
+    return `Eres un sistema experto en lectura y extracción contable de facturas, recibos y tickets.
+Analiza detenidamente la imagen adjunta para extraer la totalidad de la información en formato JSON.
 
-**TABLA DE PRODUCTOS DETECTADA (EXTREMADAMENTE IMPORTANTE):**
-${productTable || 'No se detectó tabla automáticamente'}
+${safeOcr.trim() ? `**TEXTO EXTRAÍDO POR OCR:**\n${safeOcr.substring(0, 1500)}\n` : ''}
+${safeCodes.length > 0 ? `**POSIBLES CÓDIGOS DETECTADOS:**\n${safeCodes.slice(0, 50).join(', ')}\n` : ''}
+${safeTable.trim() ? `**TABLA PREVIA:**\n${safeTable}\n` : ''}
 
-**CÓDIGOS DETECTADOS EN LA FACTURA:**
-${detectedCodes.slice(0, 50).join(', ')}
+INSTRUCCIONES CLAVE:
+1. Extrae TODOS y cada uno de los productos, artículos o servicios facturados.
+2. Cada ítem debe incluir:
+   - "producto": Nombre o descripción del artículo.
+   - "codigo_producto": Código de artículo/SKU visible. Si la factura no tiene columna de códigos, usa "ITEM-001", "ITEM-002", etc. NUNCA lo dejes vacío.
+   - "cantidad": Cantidad numérica de unidades (por defecto 1).
+   - "precio_unitario": Precio por unidad.
+   - "subtotal": Subtotal del ítem.
+3. Extrae también los datos de cabecera:
+   - "numero_factura": Número o código del comprobante.
+   - "fecha_emision": Fecha en formato YYYY-MM-DD.
+   - "proveedor": Razón social o nombre del emisor/comercio.
+   - "monto": Monto total final facturado.
+4. IMPORTANTE: SIEMPRE incluye al menos 1 ítem en el array "items", incluso si la imagen tiene baja resolución.
 
-INSTRUCCIONES CRÍTICAS:
-1. EXTRAÉ TODOS los productos de la tabla. Cada línea de producto tiene:
-   - Un código numérico (3-6 dígitos)
-   - Una descripción
-   - Una cantidad
-   - Un precio unitario
-   - Un subtotal
-
-2. Los códigos son números como: ${detectedCodes.slice(0, 10).join(', ')}
-
-3. La tabla suele tener columnas: CÓDIGO, DESCRIPCIÓN, CANTIDAD, PRECIO, SUBTOTAL
-
-4. Devuelve SOLO JSON con todos los items. Si hay 50 productos, devolvé 50 items.
-
-ESTRUCTURA EXACTA:
+Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato:
 {
     "numero_factura": "string",
     "fecha_emision": "YYYY-MM-DD",
     "proveedor": "string",
-    "monto": 0,
+    "monto": 0.0,
     "items": [
         {
             "producto": "string",
-            "codigo_producto": "string (solo números)",
-            "cantidad": 0,
-            "precio_unitario": 0,
-            "subtotal": 0
+            "codigo_producto": "string",
+            "cantidad": 1,
+            "precio_unitario": 0.0,
+            "subtotal": 0.0
         }
     ]
+}`;
 }
 
-¡EXTRAÉ TODOS LOS PRODUCTOS! No te detengas hasta llegar al TOTAL.`
-}
+function buildImprovedPromptWithOCR(ocrText = '', detectedCodes = []) {
+    const safeOcr = typeof ocrText === 'string' ? ocrText : '';
+    const safeCodes = Array.isArray(detectedCodes) ? detectedCodes : [];
 
-function buildImprovedPromptWithOCR(ocrText, detectedCodes) {
-    return `Eres un experto en extracción de datos de facturas. Tenés dos fuentes de información:
-
-1. **TEXTO EXTRAÍDO POR OCR** (puede tener errores):
-${ocrText.substring(0, 2000)}
-
-2. **CÓDIGOS DETECTADOS** (candidatos confiables):
-${detectedCodes.join(', ') || 'No se detectaron códigos automáticamente'}
-
-INSTRUCCIONES CRÍTICAS:
-1. Los **CÓDIGOS DE PRODUCTO** son EXTREMADAMENTE importantes. Usá los códigos detectados como referencia prioritaria.
-2. Si ves números como ${detectedCodes.join(', ') || '2335, 2435'} en la imagen, usalos EXACTAMENTE.
-3. Buscá en la imagen columnas con títulos: "Código", "SKU", "Artículo", "Codigo", "Ref".
-4. Cada producto DEBE tener su código correspondiente.
-
-Devuelve SOLO JSON con esta estructura:
+    return `Eres un experto en extracción de datos de facturas.
+${safeOcr ? `Texto OCR:\n${safeOcr.substring(0, 2000)}\n` : ''}
+${safeCodes.length > 0 ? `Códigos candidatos: ${safeCodes.join(', ')}\n` : ''}
+Devuelve SOLO JSON con formato:
 {
     "numero_factura": "string",
     "fecha_emision": "YYYY-MM-DD",
     "proveedor": "string",
-    "monto": 0,
+    "monto": 0.0,
     "items": [
         {
             "producto": "string",
-            "codigo_producto": "string (EL CÓDIGO NUMÉRICO EXACTO)",
-            "cantidad": 0,
-            "precio_unitario": 0,
-            "subtotal": 0
+            "codigo_producto": "string",
+            "cantidad": 1,
+            "precio_unitario": 0.0,
+            "subtotal": 0.0
         }
     ]
-}
-
-¡LOS CÓDIGOS SON CRUCIALES! Si ves números como ${detectedCodes.join(', ')}, ASIGNALOS a los productos correspondientes.`
+}`;
 }
 
 function validateAndCleanExtractedData(data) {

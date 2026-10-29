@@ -1,7 +1,7 @@
 
 // Detección automática de entorno estático (file:// o GitHub Pages) para evitar errores de CORS con PHP
-const isFileProtocol = window.location.protocol === 'file:';
-const isGitHubPages = window.location.hostname.endsWith('github.io');
+const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
+const isGitHubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
 const isStaticEnvironment = isFileProtocol || isGitHubPages;
 const CONFIG = {
     itemsPerPage: 10,
