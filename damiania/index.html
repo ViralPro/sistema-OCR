@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extracción Inteligente de Facturas - VerdeVoto OCR</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    },
+                    boxShadow: {
+                        'glow': '0 0 30px -5px rgba(79, 70, 229, 0.3)',
+                        'glow-green': '0 0 30px -5px rgba(16, 185, 129, 0.3)',
+                        'card': '0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(15, 23, 42, 0.04)',
+                        'subtle': '0 4px 20px -2px rgba(15, 23, 42, 0.05)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* CSS Base y Mejoras Visuales */
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --accent-green: #10b981;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .menu-dropdown {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Estilo para las etapas del proceso */
+        .step {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step.active {
+            background-color: #ecfdf5 !important;
+            border-color: #6ee7b7 !important;
+            color: #047857 !important;
+            font-weight: 700 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.25);
+        }
+
+        .step.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #10b981;
+        }
+
+        /* Dropzone con animación de pulso y gradiente */
+        .dropzone-active {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+            transform: scale(1.01);
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Shimmer animado para barra de progreso */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .progress-shimmer {
+            background: linear-gradient(90deg, #4f46e5 0%, #818cf8 50%, #4f46e5 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="min-h-full flex flex-col antialiased text-slate-800">
+
+    <!-- Barra de Navegación Superior Moderna -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 border-b border-slate-200/80 transition-all duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <!-- Logo & Marca -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                        <span class="material-icons text-2xl">document_scanner</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xl tracking-tight text-slate-900">VerdeVoto</span>
+                            <span class="bg-indigo-100 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">AI OCR</span>
+                        </div>
+                        <p class="text-xs text-slate-500 hidden sm:block">Extracción Automatizada de Facturas</p>
+                    </div>
+                </div>
+
+                <!-- Enlaces de Navegación Rápidos (Desktop) -->
+                <nav class="hidden md:flex items-center gap-2">
+                    <a href="index.html" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50 transition-colors">
+                        <span class="material-icons text-base">cloud_upload</span>
+                        <span>Escanear Factura</span>
+                    </a>
+                    <a href="memory.html" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+                        <span class="material-icons text-base">history</span>
+                        <span>Historial</span>
+                    </a>
+                </nav>
+
+                <!-- Menú desplegable y compatibilidad con app.js -->
+                <div class="relative">
+                    <button
+                        class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 group flex items-center gap-1"
+                        id="menuToggle" aria-label="Abrir Menú">
+                        <span class="material-icons text-slate-600 group-hover:text-indigo-600 transition-colors">menu</span>
+                        <span class="text-xs font-medium text-slate-600 hidden sm:inline">Menú</span>
+                    </button>
+                    
+                    <div class="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden hidden opacity-0 transform -translate-y-2 transition-all duration-200 z-50 py-1.5"
+                        id="menuDropdown">
+                        <div class="px-4 py-2 border-b border-slate-100">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Navegación</p>
+                        </div>
+                        <a href="#" class="flex items-center px-4 py-3 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                            id="homeBtn">
+                            <span class="material-icons mr-3 text-indigo-500 text-lg">home</span>
+                            <span class="font-medium text-sm">Inicio / Extracción</span>
+                        </a>
+                        <a href="memory.html" class="flex items-center px-4 py-3 text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                            id="memoryBtn">
+                            <span class="material-icons mr-3 text-purple-500 text-lg">history</span>
+                            <span class="font-medium text-sm">Historial de Facturas</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div class="w-full max-w-4xl">
+
+            <!-- SECCIÓN 1: ZONA DE CARGA (Upload) -->
+            <section class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-card border border-slate-200/80 p-6 sm:p-10 md:p-12 transition-all duration-300"
+                id="uploadSection">
+                
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold uppercase tracking-wider mb-3">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                        Reconocimiento Óptico & IA
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                        Sistema de Extracción de Facturas
+                    </h1>
+                    <p class="text-slate-500 text-base sm:text-lg mt-2 max-w-xl mx-auto">
+                        Arrastra y suelta tu factura o selecciona un archivo para procesarla automáticamente
+                    </p>
+                </div>
+
+                <!-- Dropzone / Zona Interactiva -->
+                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 sm:p-12 text-center hover:border-indigo-500 hover:bg-indigo-50/30 transition-all duration-300 cursor-pointer group relative bg-slate-50/50"
+                    id="uploadArea">
+                    
+                    <div class="flex justify-center mb-6">
+                        <div class="w-24 h-24 rounded-3xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-100 transition-all duration-300 shadow-inner">
+                            <span class="material-icons text-5xl text-indigo-600 group-hover:text-indigo-700 transition-colors">cloud_upload</span>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl sm:text-2xl font-bold text-slate-800 mb-2">
+                        Arrastra y suelta aquí tu archivo
+                    </h2>
+                    <p class="text-slate-500 text-sm sm:text-base mb-6">
+                        O haz clic en cualquier parte de este recuadro para seleccionar
+                    </p>
+
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.pdf,.heic" class="hidden">
+                    
+                    <button
+                        class="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-3.5 px-8 rounded-xl inline-flex items-center gap-2.5 transition-all shadow-md hover:shadow-indigo-500/25 transform hover:-translate-y-0.5 active:translate-y-0"
+                        id="selectFileBtn">
+                        <span class="material-icons text-xl">folder_open</span>
+                        <span>Seleccionar Archivo</span>
+                    </button>
+
+                    <!-- Formatos soportados -->
+                    <div class="mt-8 pt-6 border-t border-slate-200/70 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
+                        <span class="font-medium text-slate-600">Formatos soportados:</span>
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-md font-mono text-slate-600 font-semibold shadow-2xs">PDF</span>
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-md font-mono text-slate-600 font-semibold shadow-2xs">JPG</span>
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-md font-mono text-slate-600 font-semibold shadow-2xs">PNG</span>
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-md font-mono text-slate-600 font-semibold shadow-2xs">WEBP</span>
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-md font-mono text-slate-600 font-semibold shadow-2xs">HEIC</span>
+                        <span class="text-slate-400 font-normal ml-1">(Máximo 12 MB)</span>
+                    </div>
+                </div>
+
+                <!-- Características Destacadas -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-100">
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+                        <span class="material-icons text-indigo-600 text-xl">auto_fix_high</span>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">OCR Tesseract</p>
+                            <p class="text-[11px] text-slate-500">Lectura de texto e imágenes</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+                        <span class="material-icons text-emerald-600 text-xl">dataset</span>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">IA de Extracción</p>
+                            <p class="text-[11px] text-slate-500">Identifica ítems y proveedores</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+                        <span class="material-icons text-blue-600 text-xl">cloud_done</span>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">Carga Directa</p>
+                            <p class="text-[11px] text-slate-500">Guardado inmediato en base</p>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- SECCIÓN 2: PROCESAMIENTO (Processing) -->
+            <section class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-card border border-slate-200/80 p-8 md:p-12 hidden transition-all duration-300"
+                id="processingSection">
+                <div class="text-center max-w-2xl mx-auto">
+                    
+                    <!-- Spinner Animado con Doble Anillo -->
+                    <div class="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-full border-4 border-indigo-100 animate-ping opacity-25"></div>
+                        <div class="w-20 h-20 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
+                        <span class="material-icons absolute text-2xl text-indigo-600">sync</span>
+                    </div>
+
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Procesando documento...</h2>
+                    <p class="text-slate-500 text-sm sm:text-base mb-8">
+                        Estamos analizando y extrayendo los productos, totales y proveedor de tu factura
+                    </p>
+
+                    <!-- Barra de Progreso Mejorada -->
+                    <div class="w-full bg-slate-100 rounded-full h-3.5 mb-8 p-0.5 border border-slate-200/80 overflow-hidden shadow-inner">
+                        <div class="progress-shimmer h-full rounded-full transition-all duration-300 ease-out shadow-sm"
+                            id="progressFill" style="width: 0%"></div>
+                    </div>
+
+                    <!-- 6 Etapas del Flujo (sincronizadas con app.js) -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="1">
+                            1. Preparando
+                        </div>
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="2">
+                            2. Tesseract OCR
+                        </div>
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="3">
+                            3. Calidad
+                        </div>
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="4">
+                            4. Extracción IA
+                        </div>
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="5">
+                            5. Validación
+                        </div>
+                        <div class="step text-slate-400 p-3 rounded-xl border border-slate-200 bg-slate-50 font-medium text-center" data-step="6">
+                            6. Guardando
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-400 mt-6 flex items-center justify-center gap-1.5">
+                        <span class="material-icons text-sm text-indigo-500">lock</span>
+                        Procesamiento seguro y validación de datos
+                    </p>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 3: CONFIRMACIÓN Y RESULTADO (Confirmation) -->
+            <section class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-card border border-slate-200/80 p-8 sm:p-12 hidden text-center transition-all duration-300 max-w-2xl mx-auto"
+                id="confirmationSection">
+                
+                <div class="flex justify-center mb-6">
+                    <div class="w-24 h-24 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                        <span class="material-icons text-6xl text-emerald-500" id="confirmationIcon">check_circle</span>
+                    </div>
+                </div>
+
+                <h2 class="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight" id="confirmationTitle">
+                    ¡Listo!
+                </h2>
+
+                <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 mb-8 text-slate-700 text-base leading-relaxed whitespace-pre-line shadow-xs font-medium" id="confirmationMessage">
+                    Factura procesada con éxito
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                        class="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-3.5 px-8 rounded-xl inline-flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-indigo-500/25 transform hover:-translate-y-0.5 active:translate-y-0"
+                        id="newDocumentBtn">
+                        <span class="material-icons text-lg">add</span>
+                        <span>Cargar Otra Factura</span>
+                    </button>
+
+                    <a href="memory.html"
+                        class="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3.5 px-6 rounded-xl inline-flex items-center justify-center gap-2 transition-colors">
+                        <span class="material-icons text-lg">visibility</span>
+                        <span>Ver en Historial</span>
+                    </a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="py-6 text-center text-xs text-slate-400">
+        VerdeVoto OCR &copy; 2026 &bull; Extracción automatizada con Tesseract & IA
+    </footer>
+
+    <!-- Contenedor para Notificaciones Flotantes -->
+    <div id="notification-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+    <!-- Scripts de Librerías y Lógica -->
+    <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

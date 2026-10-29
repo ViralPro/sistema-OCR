@@ -1,0 +1,9 @@
+# Ignorar imágenes de prueba subidas localmente
+uploads/
+damiania/uploads/
+*.tmp
+*.log
+
+# Mantener la carpeta uploads con un gitkeep si es necesario
+!uploads/.gitkeep
+!damiania/uploads/.gitkeep

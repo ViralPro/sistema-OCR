@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Facturas - VerdeVoto OCR</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    },
+                    boxShadow: {
+                        'card': '0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 0 1px 1px rgba(15, 23, 42, 0.04)',
+                        'subtle': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
+                        'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .menu-dropdown {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        /* Estilos de Estado */
+        .estado-pendiente {
+            background-color: #fef3c7 !important;
+            color: #92400e !important;
+            border: 1px solid #fde68a !important;
+        }
+
+        .estado-procesada {
+            background-color: #ecfdf5 !important;
+            color: #065f46 !important;
+            border: 1px solid #a7f3d0 !important;
+        }
+
+        .estado-pagada {
+            background-color: #e0e7ff !important;
+            color: #3730a3 !important;
+            border: 1px solid #c7d2fe !important;
+        }
+
+        .estado-cancelada {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fecaca !important;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="min-h-full flex flex-col antialiased text-slate-800">
+
+    <!-- Barra de Navegación Superior Moderna -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 border-b border-slate-200/80 transition-all duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <!-- Logo & Marca -->
+                <div class="flex items-center gap-3">
+                    <a href="index.html" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform">
+                        <span class="material-icons text-2xl">document_scanner</span>
+                    </a>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <a href="index.html" class="font-bold text-xl tracking-tight text-slate-900 hover:text-indigo-600 transition-colors">VerdeVoto</a>
+                            <span class="bg-indigo-100 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Historial</span>
+                        </div>
+                        <p class="text-xs text-slate-500 hidden sm:block">Registro de Facturas Procesadas</p>
+                    </div>
+                </div>
+
+                <!-- Enlaces de Navegación Rápidos (Desktop) -->
+                <nav class="hidden md:flex items-center gap-3">
+                    <a href="index.html" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+                        <span class="material-icons text-base">cloud_upload</span>
+                        <span>Escanear Factura</span>
+                    </a>
+                    <a href="memory.html" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-indigo-600 bg-indigo-50 transition-colors">
+                        <span class="material-icons text-base">history</span>
+                        <span>Historial</span>
+                    </a>
+                    <button id="refreshTopBtn" onclick="dom.refreshBtn.click()" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-indigo-600 transition shadow-xs" title="Recargar datos">
+                        <span class="material-icons text-lg">refresh</span>
+                    </button>
+                </nav>
+
+                <!-- Menú desplegable y compatibilidad con memory.js -->
+                <div class="relative">
+                    <button
+                        class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 group flex items-center gap-1"
+                        id="menuToggle" aria-label="Abrir Menú">
+                        <span class="material-icons text-slate-600 group-hover:text-indigo-600 transition-colors">menu</span>
+                        <span class="text-xs font-medium text-slate-600 hidden sm:inline">Menú</span>
+                    </button>
+                    
+                    <div class="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden hidden opacity-0 transform -translate-y-2 transition-all duration-200 z-50 py-1.5"
+                        id="menuDropdown">
+                        <div class="px-4 py-2 border-b border-slate-100">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Opciones</p>
+                        </div>
+                        <a href="index.html" class="flex items-center px-4 py-3 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                            id="homeBtn">
+                            <span class="material-icons mr-3 text-indigo-500 text-lg">home</span>
+                            <span class="font-medium text-sm">Inicio / Extracción</span>
+                        </a>
+                        <button class="w-full flex items-center px-4 py-3 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-left"
+                            id="refreshBtn">
+                            <span class="material-icons mr-3 text-emerald-500 text-lg">refresh</span>
+                            <span class="font-medium text-sm">Actualizar Lista</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+        <main class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-card border border-slate-200/80 p-6 sm:p-8">
+            
+            <!-- Barra Superior del Historial: Título, Filtro y Acciones -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-6 border-b border-slate-100">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Historial de Facturas</h1>
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                            Almacenamiento Local
+                        </span>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-1">Consulta, edita y administra todas las facturas procesadas</p>
+                </div>
+
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <!-- Buscador -->
+                    <div class="relative flex-1 md:w-80">
+                        <span class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 flex items-center">
+                            <span class="material-icons text-xl">search</span>
+                        </span>
+                        <input type="text" id="searchInput" placeholder="Buscar por proveedor, factura..."
+                            class="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-slate-50/70 text-sm placeholder:text-slate-400 font-medium">
+                    </div>
+
+                    <!-- Botón para nueva factura -->
+                    <a href="index.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl inline-flex items-center gap-2 text-sm transition-all shadow-sm hover:shadow hover:-translate-y-0.5 whitespace-nowrap">
+                        <span class="material-icons text-base">add</span>
+                        <span class="hidden sm:inline">Nueva Factura</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tabla de Facturas -->
+            <div class="overflow-x-auto rounded-2xl border border-slate-200/80 shadow-xs bg-white">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50/80 sticky top-0 backdrop-blur-xs">
+                        <tr>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                ID
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Factura
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Proveedor
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Fecha Factura
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Fecha Carga
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Monto
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Items
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Estado
+                            </th>
+                            <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesBody" class="bg-white divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="9" class="px-6 py-16 text-center text-slate-400">
+                                <div class="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-3">
+                                    <span class="material-icons text-3xl text-slate-300">inbox</span>
+                                </div>
+                                <p class="text-base font-medium text-slate-600">Cargando facturas...</p>
+                                <p class="text-xs text-slate-400 mt-1">Conectando con el servidor local</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-slate-100" id="pagination">
+                <button
+                    class="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 shadow-2xs"
+                    id="prevPageBtn" disabled>
+                    <span class="material-icons text-lg">chevron_left</span>
+                    <span>Anterior</span>
+                </button>
+                
+                <span id="pageInfo" class="text-xs font-semibold text-slate-600 bg-slate-100/90 px-4 py-1.5 rounded-full border border-slate-200">
+                    Página 1 de 1
+                </span>
+                
+                <button
+                    class="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 shadow-2xs"
+                    id="nextPageBtn" disabled>
+                    <span>Siguiente</span>
+                    <span class="material-icons text-lg">chevron_right</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL 1: DETALLE DE FACTURA -->
+    <div class="fixed inset-0 flex items-center justify-center z-50 hidden" id="detailModal">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto z-10 relative shadow-modal border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-white/95 backdrop-blur-md pb-4 border-b border-slate-100 z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <span class="material-icons">receipt_long</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-slate-900">Detalle de Factura</h3>
+                        <p class="text-xs text-slate-400">Datos procesados y productos detectados</p>
+                    </div>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600 transition p-2 hover:bg-slate-100 rounded-full"
+                    id="closeDetail" title="Cerrar ventana">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div id="detailContent" class="space-y-6"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: EDITAR FACTURA -->
+    <div class="fixed inset-0 flex items-center justify-center z-50 hidden" id="editModal">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto z-10 relative shadow-modal border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-white/95 backdrop-blur-md pb-4 border-b border-slate-100 z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <span class="material-icons">edit_note</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-slate-900">Editar Factura & Productos</h3>
+                        <p class="text-xs text-slate-400">Corrige códigos y valida contra la base de datos</p>
+                    </div>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600 transition p-2 hover:bg-slate-100 rounded-full"
+                    id="closeEdit" title="Cerrar ventana">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div id="editContent" class="space-y-6"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CONFIRMAR ELIMINACIÓN -->
+    <div class="fixed inset-0 flex items-center justify-center z-50 hidden" id="deleteModal">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full mx-4 z-10 relative shadow-modal border border-slate-100 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div class="w-16 h-16 rounded-full bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center mx-auto mb-4">
+                <span class="material-icons text-3xl">delete_outline</span>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">¿Eliminar esta factura?</h3>
+            <p id="deleteMessage" class="text-slate-500 text-sm mb-6 leading-relaxed">
+                Esta acción no se puede deshacer. Se removerán los registros de la factura.
+            </p>
+            <div class="flex justify-center gap-3">
+                <button class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-sm transition"
+                    id="cancelDelete">Cancelar</button>
+                <button class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-sm transition shadow-sm"
+                    id="confirmDelete">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: ALTA DE PRODUCTO -->
+    <div class="fixed inset-0 flex items-center justify-center z-50 hidden" id="altaProductoModal">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full mx-4 z-10 relative shadow-modal border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <span class="material-icons text-xl">add_box</span>
+                    </div>
+                    <h3 class="text-lg sm:text-xl font-bold text-slate-900">Dar de Alta Producto</h3>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600 transition p-1 hover:bg-slate-100 rounded-full"
+                    id="closeAltaProducto">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-indigo-50/80 border border-indigo-100 p-3.5 rounded-xl text-xs text-indigo-800 flex items-start gap-2">
+                    <span class="material-icons text-indigo-500 text-base mt-0.5">info</span>
+                    <span>Se vinculará este código del proveedor a un producto de tu catálogo interno.</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Proveedor ID</label>
+                    <input type="text" id="alta_proveedor_id" readonly
+                        class="w-full px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono text-sm text-slate-600 cursor-not-allowed">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Código Proveedor</label>
+                    <input type="text" id="alta_codigo_proveedor" readonly
+                        class="w-full px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl font-mono text-sm text-slate-600 cursor-not-allowed">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Descripción</label>
+                    <input type="text" id="alta_descripcion" readonly
+                        class="w-full px-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 cursor-not-allowed">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Producto ID (Código Interno) <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="alta_producto_id"
+                        class="w-full px-3.5 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm outline-none transition"
+                        placeholder="Ej: 27196">
+                    <p class="text-[11px] text-slate-400 mt-1">Código único del artículo en tu inventario</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Factor de Conversión</label>
+                    <input type="number" id="alta_factor" value="1" step="0.01" min="0.01"
+                        class="w-full px-3.5 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition">
+                    <p class="text-[11px] text-slate-400 mt-1">Por defecto: 1 (unidad a unidad)</p>
+                </div>
+
+                <div class="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+                    <button onclick="cerrarAltaProducto()"
+                        class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                        Cancelar
+                    </button>
+                    <button onclick="guardarAltaProducto()"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition shadow-sm">
+                        <span class="material-icons text-base">save</span>
+                        <span>Guardar Producto</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie de Página -->
+    <footer class="py-6 text-center text-xs text-slate-400">
+        VerdeVoto OCR &copy; 2026 &bull; Panel de Historial y Validación
+    </footer>
+
+    <!-- Contenedor para Notificaciones Flotantes -->
+    <div id="notification-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+    <!-- Script de lógica -->
+    <script src="memory.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,38 @@
+[
+    {
+        "producto": "BALDE ALOHA X 3 L (ROJO)",
+        "codigo_producto": "809643",
+        "cantidad": 3,
+        "precio_unitario": 11149
+    },
+    {
+        "producto": "BALDE ALOHA X 3 LTS (MARRON)",
+        "codigo_producto": "809645",
+        "cantidad": 3,
+        "precio_unitario": 11149
+    },
+    {
+        "producto": "BALDE FRESH X 3 LTS (NARANJA)",
+        "codigo_producto": "133403",
+        "cantidad": 4,
+        "precio_unitario": 8084.4
+    },
+    {
+        "producto": "BALDE FRESH X 3 LTS (FUCISA)",
+        "codigo_producto": "809639",
+        "cantidad": 4,
+        "precio_unitario": 8084.4
+    },
+    {
+        "producto": "BALDE FRESH X 3 LTS (VERDE)",
+        "codigo_producto": "133903",
+        "cantidad": 4,
+        "precio_unitario": 8084.4
+    },
+    {
+        "producto": "POTE FRESH X 1 L (VERDE)",
+        "codigo_producto": "133318",
+        "cantidad": 4,
+        "precio_unitario": 3584.6
+    }
+]
