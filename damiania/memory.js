@@ -1,6 +1,6 @@
 const CONFIG = {
     itemsPerPage: 10,
-    apiEndpoint2: 'damiangemini/welcome.php',
+    apiEndpoint2: 'sistema-OCR/welcome.php',
     apiEndpoint: 'welcome.php'
 };
 
