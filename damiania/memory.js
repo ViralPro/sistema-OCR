@@ -547,67 +547,11 @@ window.agregarItem = function () {
     notify('Producto agregado', 'info');
 };
 
-// Función para agregar un item vacío
-window.agregarItem = () => {
-    const tbody = document.getElementById('edit-items-table');
-    const rows = tbody.querySelectorAll('tr');
-    const newIndex = rows.length;
-
-    const newRow = document.createElement('tr');
-    newRow.setAttribute('data-item-index', newIndex);
-    newRow.className = '';
-
-    newRow.innerHTML = `
-        <td class="px-4 py-3">
-            <input type="text" value="" 
-                   data-field="producto" class="w-full px-2 py-1 border rounded edit-item-input" placeholder="Nuevo producto">
-        </td>
-        <td class="px-4 py-3">
-            <input type="text" value="" 
-                   data-field="codigo_producto" class="w-full px-2 py-1 border rounded edit-item-input font-mono" placeholder="Código">
-        </td>
-        <td class="px-4 py-3 font-mono font-medium text-gray-400">
-            —
-        </td>
-        <td class="px-4 py-3">
-            <input type="number" value="0" step="0.01" min="0"
-                   data-field="cantidad" class="w-full px-2 py-1 border rounded edit-item-input text-right">
-        </td>
-        <td class="px-4 py-3">
-            <input type="number" value="0" step="0.01" min="0"
-                   data-field="precio_unitario" class="w-full px-2 py-1 border rounded edit-item-input text-right">
-        </td>
-        <td class="px-4 py-3 text-right font-medium">
-            $0,00
-        </td>
-        <td class="px-4 py-3 text-center text-red-600 text-xs font-medium">
-            No encontrado
-        </td>
-        <td class="px-4 py-3 text-center">
-            <button onclick="eliminarItem(${newIndex})" 
-                    class="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 transition" 
-                    title="Eliminar producto">
-                <span class="material-icons text-lg">delete</span>
-            </button>
-        </td>
-    `;
-
-    tbody.appendChild(newRow);
-
-    // Actualizar contador
-    const totalItems = rows.length + 1;
-    const encontrados = document.querySelectorAll('#edit-items-table tr.bg-green-50').length;
-    const counter = document.getElementById('items-counter');
-    if (counter) {
-        counter.textContent = `${encontrados}/${totalItems} encontrados`;
-    }
-};
 
 // Función para revalidar items después de correcciones
 window.revalidateItems = async (id) => {
     if (!state.editingInvoice) return;
 
-    // Recoger los valores editados
     const rows = document.querySelectorAll('#edit-items-table tr');
     const items = [];
 
@@ -625,112 +569,113 @@ window.revalidateItems = async (id) => {
         items.push(item);
     });
 
-    // Mostrar loading
     const revalidateBtn = document.querySelector('[onclick="revalidateItems(' + id + ')"]');
-    const originalText = revalidateBtn.innerHTML;
-    revalidateBtn.innerHTML = '<span class="material-icons text-sm animate-spin">refresh</span> Validando...';
-    revalidateBtn.disabled = true;
+    const originalText = revalidateBtn ? revalidateBtn.innerHTML : 'Revalidar Productos';
+    if (revalidateBtn) {
+        revalidateBtn.innerHTML = '<span class="material-icons text-sm animate-spin">refresh</span> Validando...';
+        revalidateBtn.disabled = true;
+    }
 
     try {
-        // Obtener proveedor_id de diferentes fuentes
         const enrichedData = parseEnrichedData(state.editingInvoice.extra) || {};
-        let proveedorId = enrichedData?.proveedor_id;
+        let proveedorId = enrichedData?.proveedor_id || document.getElementById('edit_proveedor_id')?.value || state.editingInvoice.proveedor_data?.id || 1;
 
-        // Intentar obtener del campo oculto
-        if (!proveedorId) {
-            proveedorId = document.getElementById('edit_proveedor_id')?.value;
-        }
+        let resultados = null;
 
-        // Intentar obtener de proveedor_data
-        if (!proveedorId && state.editingInvoice.proveedor_data?.id) {
-            proveedorId = state.editingInvoice.proveedor_data.id;
-        }
+        if (!isStaticEnvironment) {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'validar_productos');
+                formData.append('proveedor_id', proveedorId);
+                formData.append('items', JSON.stringify(items));
 
-        if (!proveedorId) {
-            alert('No hay proveedor asociado para validar productos. Por favor, guarda el proveedor primero.');
-            return;
-        }
-
-        // Validar cada producto contra la BD
-        const formData = new FormData();
-        formData.append('action', 'validar_productos');
-        formData.append('proveedor_id', proveedorId);
-        formData.append('items', JSON.stringify(items));
-
-        const response = await fetch(CONFIG.apiEndpoint, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            let totalEncontrados = 0;
-
-            // Actualizar visualización con resultados
-            result.resultados.forEach((res, index) => {
-                const row = document.querySelector(`#edit-items-table tr[data-item-index="${index}"]`);
-                if (row) {
-                    const codigoInternoCell = row.cells[2];
-                    const estadoCell = row.cells[6];
-
-                    // Limpiar sugerencias anteriores si existen
-                    const oldSuggestions = row.querySelector('.suggestions-container');
-                    if (oldSuggestions) oldSuggestions.remove();
-
-                    if (res.encontrado) {
-                        row.classList.add('bg-green-50');
-                        row.classList.remove('bg-red-50');
-                        codigoInternoCell.innerHTML = `<span class="font-mono font-medium text-green-600">${res.codigo_interno}</span>`;
-                        estadoCell.innerHTML = '<span class="text-green-600 text-xs font-medium">Encontrado</span>';
-                        totalEncontrados++;
-                    } else {
-                        row.classList.add('bg-red-50');
-                        row.classList.remove('bg-green-50');
-                        codigoInternoCell.innerHTML = '<span class="text-gray-400">—</span>';
-                        estadoCell.innerHTML = '<span class="text-red-600 text-xs font-medium">No encontrado</span>';
-
-                        // Obtener el código actual
-                        const codigoInput = row.querySelector('input[data-field="codigo_producto"]');
-                        const productoInput = row.querySelector('input[data-field="producto"]');
-                        const codigoActual = codigoInput?.value || '';
-                        const descripcionActual = productoInput?.value || '';
-
-                        // SOLO el botón verde, sin sugerencias
-                        const sugerencias = document.createElement('div');
-                        sugerencias.className = 'suggestions-container mt-2';
-                        sugerencias.innerHTML = `
-        <button onclick="abrirAltaProducto(${index}, ${proveedorId}, '${escapeHtml(codigoActual)}', '${escapeHtml(descripcionActual)}')" 
-                class="w-full bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded flex items-center justify-center gap-1 transition text-xs">
-            <span class="material-icons text-sm">add</span>
-            Dar de alta "${codigoActual || 'nuevo código'}"
-        </button>
-    `;
-
-                        estadoCell.appendChild(sugerencias);
+                const response = await fetch(CONFIG.apiEndpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result && result.success) {
+                        resultados = result.resultados;
                     }
                 }
-            });
-
-            // Actualizar el contador de items encontrados
-            const counter = document.getElementById('items-counter');
-            if (counter) {
-                counter.className = totalEncontrados === items.length ?
-                    'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800' :
-                    'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800';
-                counter.textContent = `${totalEncontrados}/${items.length} encontrados`;
+            } catch (e) {
+                console.warn('Validación PHP no disponible, usando catálogo local:', e);
             }
-
-            notify(`Productos revalidados: ${totalEncontrados}/${items.length} encontrados`, 'success');
-        } else {
-            notify('Error en la validación: ' + (result.error || 'desconocido'), 'error');
         }
+
+        // Si estamos en modo estático o el backend no respondió, validar localmente
+        if (!resultados) {
+            const catalogoLocal = JSON.parse(localStorage.getItem('catalogo_productos_ocr') || '{}');
+            resultados = items.map(item => {
+                const cod = (item.codigo_producto || '').trim();
+                const mapKey = `${proveedorId}_${cod}`;
+                const codigoInterno = catalogoLocal[mapKey] || catalogoLocal[cod] || (cod ? cod : null);
+                return {
+                    encontrado: Boolean(codigoInterno),
+                    codigo_interno: codigoInterno || '—'
+                };
+            });
+        }
+
+        let totalEncontrados = 0;
+        resultados.forEach((res, index) => {
+            const row = document.querySelector(`#edit-items-table tr[data-item-index="${index}"]`);
+            if (row) {
+                const codigoInternoCell = row.cells[2];
+                const estadoCell = row.cells[6];
+
+                const oldSuggestions = row.querySelector('.suggestions-container');
+                if (oldSuggestions) oldSuggestions.remove();
+
+                if (res.encontrado) {
+                    row.classList.add('bg-green-50');
+                    row.classList.remove('bg-red-50');
+                    codigoInternoCell.innerHTML = `<span class="font-mono font-medium text-green-600">${escapeHtml(String(res.codigo_interno))}</span>`;
+                    estadoCell.innerHTML = '<span class="text-green-600 text-xs font-medium">Encontrado</span>';
+                    totalEncontrados++;
+                } else {
+                    row.classList.add('bg-red-50');
+                    row.classList.remove('bg-green-50');
+                    codigoInternoCell.innerHTML = '<span class="text-gray-400">—</span>';
+                    estadoCell.innerHTML = '<span class="text-red-600 text-xs font-medium">No encontrado</span>';
+
+                    const codigoInput = row.querySelector('input[data-field="codigo_producto"]');
+                    const productoInput = row.querySelector('input[data-field="producto"]');
+                    const codigoActual = codigoInput?.value || '';
+                    const descripcionActual = productoInput?.value || '';
+
+                    const sugerencias = document.createElement('div');
+                    sugerencias.className = 'suggestions-container mt-2';
+                    sugerencias.innerHTML = `
+                        <button onclick="abrirAltaProducto(${index}, ${proveedorId || 1}, '${escapeHtml(codigoActual)}', '${escapeHtml(descripcionActual)}')" 
+                                class="w-full bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded flex items-center justify-center gap-1 transition text-xs">
+                            <span class="material-icons text-sm">add</span>
+                            Dar de alta "${escapeHtml(codigoActual || 'nuevo código')}"
+                        </button>
+                    `;
+                    estadoCell.appendChild(sugerencias);
+                }
+            }
+        });
+
+        const counter = document.getElementById('items-counter');
+        if (counter) {
+            counter.className = totalEncontrados === items.length ?
+                'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800' :
+                'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800';
+            counter.textContent = `${totalEncontrados}/${items.length} encontrados`;
+        }
+
+        notify(`Productos revalidados: ${totalEncontrados}/${items.length} encontrados`, 'success');
     } catch (error) {
         console.error('Error al revalidar:', error);
         notify('Error al revalidar productos: ' + error.message, 'error');
     } finally {
-        revalidateBtn.innerHTML = originalText;
-        revalidateBtn.disabled = false;
+        if (revalidateBtn) {
+            revalidateBtn.innerHTML = originalText;
+            revalidateBtn.disabled = false;
+        }
     }
 };
 
@@ -738,18 +683,16 @@ window.revalidateItems = async (id) => {
 window.saveEdit = async () => {
     if (!state.editingInvoice) return;
 
-    // Recoger datos editados
-    const numero = document.getElementById('edit_numero')?.value;
-    const fecha = document.getElementById('edit_fecha')?.value;
-    const proveedor = document.getElementById('edit_proveedor')?.value;
+    const numero = document.getElementById('edit_numero')?.value || '';
+    const fecha = document.getElementById('edit_fecha')?.value || '';
+    const proveedor = document.getElementById('edit_proveedor')?.value || '';
 
-    // Recoger items editados y recalcular subtotales
     const rows = document.querySelectorAll('#edit-items-table tr');
     const items = [];
     const itemsProcesados = [];
     let montoTotal = 0;
 
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
         const inputs = row.querySelectorAll('.edit-item-input');
         const item = {};
 
@@ -770,76 +713,82 @@ window.saveEdit = async () => {
         const codigoInternoCell = row.cells[2];
         const estadoCell = row.cells[6];
 
-        const encontrado = estadoCell.innerText.includes('✅');
+        const encontrado = estadoCell.innerText.includes('Encontrado') || estadoCell.innerText.includes('✅') || row.classList.contains('bg-green-50');
         let codigo_interno = null;
 
         if (encontrado) {
             const span = codigoInternoCell.querySelector('span');
-            if (span) {
-                codigo_interno = span.innerText;
-            } else {
-                codigo_interno = codigoInternoCell.innerText.trim();
-            }
+            codigo_interno = span ? span.innerText.trim() : codigoInternoCell.innerText.trim();
         }
 
         itemsProcesados.push({
             producto: item.producto || '',
             codigo: item.codigo_producto || '',
+            codigo_producto: item.codigo_producto || '',
             cantidad: cantidad,
             precio: precio,
+            precio_unitario: precio,
             subtotal: item.subtotal,
             encontrado: encontrado,
-            codigo_interno: codigo_interno !== '—' ? codigo_interno : null
+            codigo_interno: codigo_interno && codigo_interno !== '—' ? codigo_interno : (item.codigo_producto || '—')
         });
     });
 
-    try {
-        const enrichedData = parseEnrichedData(state.editingInvoice.extra) || {};
-
-        enrichedData.items = itemsProcesados;
-        enrichedData.ultima_modificacion = new Date().toISOString();
-
-        if (!enrichedData.proveedor_id && state.editingInvoice.proveedor_data?.id) {
-            enrichedData.proveedor_id = state.editingInvoice.proveedor_data.id;
-        }
-
-        const formData = new FormData();
-        formData.append('action', 'update_factura');
-        formData.append('id', state.editId);
-        formData.append('numero_factura', numero);
-        formData.append('fecha_emision', fecha);
-        formData.append('proveedor', proveedor);
-        formData.append('items', JSON.stringify(items));
-        formData.append('extra', JSON.stringify(enrichedData));
-        formData.append('monto', montoTotal);
-
-        const response = await fetch(CONFIG.apiEndpoint, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            dom.editModal.classList.add('hidden');
-            await loadInvoices(); // Recargar lista
-            
-            // NUEVO: Si el modal de detalle estaba abierto, actualizarlo
-            if (!dom.detailModal.classList.contains('hidden') && state.editId) {
-                // Esperar un momento para que se actualice el state
-                setTimeout(() => {
-                    viewDetail(state.editId);
-                }, 100);
-            }
-            
-            notify('Factura actualizada correctamente', 'success');
-        } else {
-            notify('Error al actualizar: ' + (result.error || 'desconocido'), 'error');
-        }
-    } catch (error) {
-        console.error('Error al guardar:', error);
-        notify('Error al guardar cambios', 'error');
+    const enrichedData = parseEnrichedData(state.editingInvoice.extra) || {};
+    enrichedData.items = itemsProcesados;
+    enrichedData.ultima_modificacion = new Date().toISOString();
+    if (!enrichedData.proveedor_id && state.editingInvoice.proveedor_data?.id) {
+        enrichedData.proveedor_id = state.editingInvoice.proveedor_data.id;
     }
+
+    let savedOnBackend = false;
+    if (!isStaticEnvironment) {
+        try {
+            const formData = new FormData();
+            formData.append('action', 'update_factura');
+            formData.append('id', state.editId);
+            formData.append('numero_factura', numero);
+            formData.append('fecha_emision', fecha);
+            formData.append('proveedor', proveedor);
+            formData.append('items', JSON.stringify(items));
+            formData.append('extra', JSON.stringify(enrichedData));
+            formData.append('monto', montoTotal);
+
+            const response = await fetch(CONFIG.apiEndpoint, {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (result && result.success) {
+                    savedOnBackend = true;
+                }
+            }
+        } catch (e) {
+            console.warn('Guardando edición en almacenamiento local:', e);
+        }
+    }
+
+    if (!savedOnBackend) {
+        const local = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
+        const idx = local.findIndex(f => f.id == state.editId);
+        if (idx !== -1) {
+            local[idx] = {
+                ...local[idx],
+                numero_factura: numero,
+                fecha_emision: fecha,
+                proveedor: proveedor,
+                monto: montoTotal,
+                items: items,
+                extra: enrichedData
+            };
+            localStorage.setItem('facturas_ocr', JSON.stringify(local));
+        }
+    }
+
+    dom.editModal.classList.add('hidden');
+    await loadInvoices();
+    notify('Factura actualizada correctamente', 'success');
 };
 
 // Función para abrir modal de alta de producto
@@ -886,79 +835,71 @@ window.guardarAltaProducto = async () => {
         return;
     }
 
-    if (!pendingAlta.proveedor_id || !pendingAlta.codigo_proveedor) {
-        alert('Faltan datos del proveedor');
-        return;
+    const provId = pendingAlta.proveedor_id || 1;
+    const codProv = pendingAlta.codigo_proveedor || 'ITEM';
+
+    let savedBackend = false;
+    if (!isStaticEnvironment) {
+        try {
+            const formData = new FormData();
+            formData.append('action', 'alta_producto_proveedor');
+            formData.append('proveedor_id', provId);
+            formData.append('codigo_proveedor', codProv);
+            formData.append('descripcion_proveedor', pendingAlta.descripcion || '');
+            formData.append('producto_id', productoId);
+            formData.append('factor_conversion', factor);
+
+            const response = await fetch(CONFIG.apiEndpoint, {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (result && result.success) {
+                    savedBackend = true;
+                }
+            }
+        } catch (e) {
+            console.warn('Guardando alta de producto en catálogo local:', e);
+        }
     }
 
-    try {
-        const formData = new FormData();
-        formData.append('action', 'alta_producto_proveedor');
-        formData.append('proveedor_id', pendingAlta.proveedor_id);
-        formData.append('codigo_proveedor', pendingAlta.codigo_proveedor);
-        formData.append('descripcion_proveedor', pendingAlta.descripcion || '');
-        formData.append('producto_id', productoId);
-        formData.append('factor_conversion', factor);
+    if (!savedBackend) {
+        const catalogoLocal = JSON.parse(localStorage.getItem('catalogo_productos_ocr') || '{}');
+        catalogoLocal[`${provId}_${codProv}`] = productoId;
+        catalogoLocal[codProv] = productoId;
+        localStorage.setItem('catalogo_productos_ocr', JSON.stringify(catalogoLocal));
+    }
 
-        const response = await fetch(CONFIG.apiEndpoint, {
-            method: 'POST',
-            body: formData
-        });
+    notify('Producto dado de alta correctamente', 'success');
 
-        const result = await response.json();
+    if (pendingAlta.row) {
+        const codigoInternoCell = pendingAlta.row.cells[2];
+        const estadoCell = pendingAlta.row.cells[6];
 
-        if (result.success) {
-            notify('Producto dado de alta correctamente', 'success');
+        pendingAlta.row.classList.add('bg-green-50');
+        pendingAlta.row.classList.remove('bg-red-50');
+        codigoInternoCell.innerHTML = `<span class="font-mono font-medium text-green-600">${escapeHtml(productoId)}</span>`;
+        estadoCell.innerHTML = '<span class="text-green-600 text-xs font-medium">Encontrado</span>';
 
-            // Actualizar la fila en la tabla de edición
-            if (pendingAlta.row) {
-                const codigoInternoCell = pendingAlta.row.cells[2];
-                const estadoCell = pendingAlta.row.cells[6];
+        const suggestions = pendingAlta.row.querySelector('.suggestions-container');
+        if (suggestions) suggestions.remove();
+    }
 
-                pendingAlta.row.classList.add('bg-green-50');
-                pendingAlta.row.classList.remove('bg-red-50');
-                codigoInternoCell.innerHTML = `<span class="font-mono font-medium text-green-600">${productoId}</span>`;
-                estadoCell.innerHTML = '<span class="text-green-600 text-xs font-medium">Encontrado</span>';
+    cerrarAltaProducto();
 
-                const suggestions = pendingAlta.row.querySelector('.suggestions-container');
-                if (suggestions) suggestions.remove();
-            }
+    const rows = document.querySelectorAll('#edit-items-table tr');
+    let encontrados = 0;
+    rows.forEach(row => {
+        if (row.classList.contains('bg-green-50')) encontrados++;
+    });
 
-            cerrarAltaProducto();
-
-            // Actualizar contador
-            const rows = document.querySelectorAll('#edit-items-table tr');
-            let encontrados = 0;
-            rows.forEach(row => {
-                if (row.classList.contains('bg-green-50')) encontrados++;
-            });
-
-            const counter = document.getElementById('items-counter');
-            if (counter) {
-                counter.className = encontrados === rows.length ?
-                    'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800' :
-                    'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800';
-                counter.textContent = `${encontrados}/${rows.length} encontrados`;
-            }
-
-            // NUEVO: Si el modal de detalle estaba abierto, actualizarlo
-            if (!dom.detailModal.classList.contains('hidden') && state.editId) {
-                // Recargar facturas primero
-                await loadInvoices();
-                setTimeout(() => {
-                    viewDetail(state.editId);
-                }, 100);
-            } else {
-                // Solo recargar la lista
-                loadInvoices();
-            }
-
-        } else {
-            notify('Error al dar de alta: ' + (result.error || 'desconocido'), 'error');
-        }
-    } catch (error) {
-        console.error('Error al dar de alta producto:', error);
-        notify('Error al conectar con el servidor', 'error');
+    const counter = document.getElementById('items-counter');
+    if (counter) {
+        counter.className = encontrados === rows.length ?
+            'px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800' :
+            'px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800';
+        counter.textContent = `${encontrados}/${rows.length} encontrados`;
     }
 };
 
@@ -1069,31 +1010,41 @@ window.askDelete = (id) => {
 async function confirmDelete() {
     if (!state.deleteId) return;
 
-    try {
-        const formData = new FormData();
-        formData.append('action', 'delete_factura');
-        formData.append('id', state.deleteId);
+    let deletedBackend = false;
+    if (!isStaticEnvironment) {
+        try {
+            const formData = new FormData();
+            formData.append('action', 'delete_factura');
+            formData.append('id', state.deleteId);
 
-        const response = await fetch(CONFIG.apiEndpoint, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            dom.deleteModal.classList.add('hidden');
-            loadInvoices();
-            notify('Factura eliminada correctamente', 'success');
-        } else {
-            notify('Error al eliminar: ' + (result.error || 'desconocido'), 'error');
+            const response = await fetch(CONFIG.apiEndpoint, {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (result && result.success) {
+                    deletedBackend = true;
+                }
+            }
+        } catch (error) {
+            console.warn('Eliminando factura en almacenamiento local:', error);
         }
-    } catch (error) {
-        console.error('Error al eliminar:', error);
-        notify('Error al eliminar la factura', 'error');
-    } finally {
-        state.deleteId = null;
     }
+
+    if (!deletedBackend) {
+        const local = JSON.parse((localStorage.getItem('facturas_ocr') || localStorage.getItem('verdevoto_facturas')) || '[]');
+        const filtered = local.filter(f => f.id != state.deleteId);
+        localStorage.setItem('facturas_ocr', JSON.stringify(filtered));
+        if (localStorage.getItem('verdevoto_facturas')) {
+            localStorage.setItem('verdevoto_facturas', JSON.stringify(filtered));
+        }
+    }
+
+    dom.deleteModal.classList.add('hidden');
+    state.deleteId = null;
+    await loadInvoices();
+    notify('Factura eliminada correctamente', 'success');
 }
 
 // Funciones auxiliares
